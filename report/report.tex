@@ -1,0 +1,35 @@
+\documentclass{article}
+\usepackage[letterpaper, total={7.5in, 9in}]{geometry}
+\usepackage{graphicx}
+\usepackage{fancyvrb}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\title{Project Report \\ \normalsize COMP SCI 3800 - Intro to Operating Systems}
+\author{Robert Boerwinkle}
+\date{}
+
+\begin{document}
+
+\maketitle{}
+
+\section*{software used}
+
+Not all of these are \textit{strictly} necissary, but all are highly recommended. There are alternatives, but this is my suite. It is chosen partially due to the fact that I am using Debian GNU/Linux. Some software will have to be built from source.
+
+\begin{tabular}{|c|c|c|c|}
+  \hline
+  Name & Debian Package & Usage & Website
+  \hline
+  TiLP & \verb|tilp2| & Connecting to calculator & \url{http://lpg.ticalc.org/prj_tilp/index.html}
+  \hline
+  TilEm & \verb|tilem| & Emulation & \url{http://lpg.ticalc.org/prj_tilem/}
+  \hline
+  rom8x & N/A, built & Building roms & \url{https://www.ticalc.org/archives/files/fileinfo/373/37341.html}
+  \hline
+\end{tabular}
+
+\section*{methodology}
+
+A ROM is not critical, but very helpful. To obtain the rom, rom8x was used. This software comes with an extensive readme on its operation. In short, it has 2 assembly programs (for my calculator). They each need to be sent to the calculator (with TiLP), and then run\footnote{with the \verb|Asm(| command}. They generate files which can then be copied back to the pc (again, with TiLP). Then use rom8x to combine them with an OS file from TI to produce a \verb|.rom| file. This ROM can then be run with TilEm.
+
+\end{document}
