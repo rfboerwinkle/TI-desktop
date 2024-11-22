@@ -1,11 +1,12 @@
-; OS Base
-; Contains no executable code, but rather, this includes other code.
+; This is the main file that gets assembled
 
-; Needed defines, feel free to change these
-clip_mask				.equ $8000 ; one byte of free RAM
-FlashExecutableRAM		.equ $8000 ; Flash code is loaded here for execution
-FlashExecutableRAMSize	.equ 100   ; This is the amount of space you leave for flash RAM (KnightOS uses this RAM for other stuff, so it's really like temp RAM)
-SwapSector				.equ $78
+; one byte of free RAM
+CLIP_MASK .equ $8000
+; Flash code is loaded here for execution
+FLASH_EXECUTABLE_RAM .equ $8000
+; This is the amount of space you leave for flash RAM (KnightOS uses this RAM for other stuff, so it's really like temp RAM)
+FLASH_EXECUTABLE_RAM_SIZE .equ 100
+SWAP_SECTOR .equ $78
 
 ; Boot up and special sections
 #include "header.asm"

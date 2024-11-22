@@ -1,5 +1,6 @@
 """
 This was adapted from a visual basic script originally written by Brandon Wilson.
+https://www.ticalc.org/archives/files/fileinfo/420/42044.html
 From his readme:
 
 > OS2Tools v1.0
@@ -26,20 +27,30 @@ def toIntelHexString(address, array, offset, count):
   ret += f"{checksum:0>2X}\r\n"
   return ret
 
-def Signature(inHash):
-  # this should be the proper one
-  N = 0xEF5FEF0B0AB6E22731C17539658B2E91E53A59BF8E00FCC81D05758F26C1791CD35AF6101B1E3543AC3E78FD8BB8F37FC8FE85601C502EABC9132CEAD4711CB1
-  D = 0x2A3E1B2010F318D9BD7C7E19300980B055A0E2A9554B77E7142E23CDF7C7CA13C233A3D462FDFC968B1F9CEAF2AC2CF305147992AD9E834192ACEBB517DB9941
-  # this should be the community one
-  # N = 0xBFA2309BF4997D8ED9850F907746E9919E7862511C1B6FEEC23043E6103A38BD84F5421AD04980F79D4EC7D6093D1D1FEF60334E93BF6CD46F82F19B7EF2AB6B
-  # D = 0x70B9C23D9EF0E072259990AF5538C5A0F3CE57F379F2059B8149915A27A9C7050D1889078AC306D98A0154CFDDD44F74B7AB2DFA44643FEBF0E0916063D631E1
+def Signature(inHash, N, D):
   H2 = 0
+  # No clue why this is reversed...
   for num in reversed(inHash):
     H2 <<= 8
     H2 += num
+  # This is modular power: (H2 ^ D) % N
   return pow(H2, D, N)
 
-# take args here...
+def error(msg):
+    print("--------------------------------------------------")
+    print("Usage: Build8XU.py -k[OS key (1 byte)] -m[major version (1 byte)] -n[minor version (1 byte)] -h[max. HW version (1 byte)] -K[key filename] <[page]:[offset]:[filename]> ...")
+    print("Builds a valid 8XU OS upgrade file from one or more binary files.")
+    print()
+    print("Examples: to build a 2-page OS from a 32KB ROM:")
+    print("            Build8XU -k05 -m00 -n01 -h03 00:0000:os.rom 01:4000:os.rom")
+    print("          to build a 3-page OS from separate binary files:")
+    print("            Build8XU -k05 -m02 -n2B -h03 00:0000:page0.bin 01:0000:page1.bin 7C:0000:page2.bin")
+    print("          to build a 2-page OS from BIN files and a ROM image:")
+    print("            Build8XU -k05 -m02 -n42 -h03 00:0000:page0.bin 01:4000:83p.rom 7C:7C0000:83p.rom")
+    print("All parameters are required. All values are hexadecimal.")
+    print()
+    print(msg)
+    quit()
 
 key = 0x0A
 majorVersion = 2
@@ -52,8 +63,11 @@ BYTES_PER_LINE = 32
 
 outputFileName = "trial.8xu"
 
-# PLEASE NOTE THE DIFFERENCE BETWEEN THE DIRECTORY AND THE PAGE
-pages = {0x00: (0x0000, "../src/00/base.bin"), 0x1C: (0x0000, "../src/7C/base.bin")}
+
+# pages = [(page number, offset, filename) ...]
+pages = [(0x7C, 0x0000, "../src/7C/base.bin"), (0x00, 0x0000, "../src/00/base.bin")]
+# This implicitly sorts based on the first element, (page number).
+pages.sort()
 
 #                 fill    (pages * pagesize) + header...?
 data = bytearray([0xFF] * ((0x7F * 0x4000) + 128))
@@ -71,9 +85,8 @@ data[:OsHeaderLen] = OsHeader
 dataIndex += OsHeaderLen
 
 for page in pages:
-  pg = page
-  offset = pages[page][0]
-  fileName = pages[page][1]
+  offset = page[1]
+  fileName = page[2]
   with open(fileName, "rb") as f:
     f.seek(offset)
     newArray = f.read(0x4000)
@@ -81,7 +94,9 @@ for page in pages:
   dataIndex += 0x4000
 
 MD5Hash = hashlib.md5(data[:dataIndex])
-sig = Signature(MD5Hash.digest())
+N = 0xEF5FEF0B0AB6E22731C17539658B2E91E53A59BF8E00FCC81D05758F26C1791CD35AF6101B1E3543AC3E78FD8BB8F37FC8FE85601C502EABC9132CEAD4711CB1
+D = 0x2A3E1B2010F318D9BD7C7E19300980B055A0E2A9554B77E7142E23CDF7C7CA13C233A3D462FDFC968B1F9CEAF2AC2CF305147992AD9E834192ACEBB517DB9941
+sig = Signature(MD5Hash.digest(), N, D)
 
 with open(outputFileName, "wb") as f:
   TiflHeader = b'\x2A\x2A\x54\x49\x46\x4C\x2A\x2A\x02\x40\x01\x88\x11\x26\x20\x07\x08\x62\x61\x73\x65\x63\x6F\x64\x65\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x73\x23\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
@@ -95,13 +110,14 @@ with open(outputFileName, "wb") as f:
   pageHeader = ""
   ptr = 0
   for page in pages:
-    pageHeader = pageHeaderBase + f"{page:0>2X}{(0xFC - page):0>2X}\r\n"
+    pageNum = page[0]
+    pageHeader = pageHeaderBase + f"{pageNum:0>2X}{(0xFC - pageNum):0>2X}\r\n"
     f.write(pageHeader.encode(encoding="ascii"))
 
     for i in range(LINES_PER_PAGE):
       line = ""
       address = i * BYTES_PER_LINE
-      if page != 0:
+      if pageNum != 0:
         address = address | 0x4000
       offset = (address & 0x3FFF) + (ptr*0x4000) + OsHeaderLen
       line = toIntelHexString(address, data, offset, BYTES_PER_LINE)
