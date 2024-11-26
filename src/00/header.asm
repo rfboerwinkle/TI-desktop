@@ -8,8 +8,8 @@
 
 ; $0008
   ; RST $08
-  ret
-  .db 0, 0, 0, 0, 0, 0, 0
+  jp SysCall
+  .db 0, 0, 0, 0, 0
 
 ; $0010
   ; RST $10
@@ -46,6 +46,7 @@
   .db 0, 0, 0, 0, 0, 0
   .db 0, 0, 0, 0, 0, 0
 ; $0053
+; This is where bootloader drops us off.
   jp Boot
 ; $0056
   .db $FF, $A5, $FF

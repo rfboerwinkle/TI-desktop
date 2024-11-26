@@ -1,5 +1,3 @@
 software/
-report/*.aux
-report/*.log
-report/*.out
 *.8xu
+*.bin

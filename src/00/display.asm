@@ -19,60 +19,51 @@ ClearBuffer:
   pop hl
   ret
 
-; Input: IY: Buffer
-; -----> Copy the gbuf to the screen, guaranteed
-; Input: nothing
-; Output: graph buffer is copied to the screen, no matter the speed settings
+; Brief: Copy the buffer to the screen, guaranteed
+; Input: IY = address of the buffer
 BufferToLCD:
-  push hl
-  push bc
-  push af
-  push de
-  ld a, i
-  push af
+  ld A, I
+  push AF
   ; di is only required if an interrupt will alter the lcd.
   di
-  push iy \ pop hl
-  ld c, $10
-  ld a, $80
+  push IY
+  pop HL
+  ld C, $10
+  ld A, $80
 setRow:
-  in f, (c)
+  in F, (C)
   jp m, setRow
-  out ($10), a
-  ld de, 12
-  ld a, $20
+  out ($10), A
+  ld DE, $000C
+  ld A, $20
 col:
-  in f, (c)
+  in F, (C)
   jp m, col
-  out ($10), a
-  push af
-  ld b, 64
+  out ($10), A
+  push AF
+  ld B, 64
 row:
-  ld a, (hl)
+  ld A, (HL)
 rowWait:
-  in f, (c)
+  in F, (C)
   jp m, rowWait
-  out ($11), a
-  add hl, de
+  out ($11), A
+  add HL, DE
   djnz row
-  pop af
-  dec h
-  dec h
-  dec h
-  inc hl
-  inc a
-  cp $2c
+  pop AF
+  dec H
+  dec H
+  dec H
+  inc HL
+  inc A
+  cp $2C
   jp nz, col
-  pop af
+  pop AF
 
   jp po, _
   ei
 _:
 
-  pop de
-  pop af
-  pop bc
-  pop hl
   ret
 
 LCDDelay:

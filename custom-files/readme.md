@@ -8,6 +8,6 @@
 
  - `ti84plus_2.53.8Xu` : The 2.53MP version of the TIOS (contains liscensed data) (https://tiplanet.org/forum/archives_voir.php?id=1634)
 
- - `TI84PlusSE_OS.8Xu` : The 2.55MP version of the TIOS (contains liscensed data) (no direct download link available, got it from texas instroments)
+ - `TI84PlusSE_OS.8Xu` : The 2.55MP version of the TIOS (contains liscensed data) (no direct download link available, got it from texas instruments)
 
  - `ti84p.skn` : skin I use for TilEm2 (from TilEm2, couldn't find it in the debian version)

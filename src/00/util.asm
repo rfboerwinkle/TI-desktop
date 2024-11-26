@@ -44,23 +44,34 @@ GetBatteryLevel_Done:
 Sleep:
   ld a, i
   push af
-  ld a, 2
-  out (10h), a ; Disable LCD
+  ld a, $02
+  out ($10), a ; Disable LCD
   di ; And interrupts, for now
   im 1 ; interrupt mode 1, for cleanliness
+  ld a, $01
+  out ($03), a ; ON
   ei ; Enable interrupting when ON is pressed
-  ld a, 1h
-  out (03h), a ; ON
   halt ; and halt :)
   di
-  ld a, 0Bh ; Reset the interrupts
-  out (03h), a
-  ld a, 3
-  out (10h), a ; Enable the screen
+  ld a, %00101001 ; Reset the interrupts
+  out ($03), a
+  ld a, $03
+  out ($10), a ; Enable the screen
   pop af
   ret po
   ei
   ret
+
+Shutdown:
+  ld a, $02
+  out ($10), a ; Disable LCD
+  di ; And interrupts, for now
+  im 1 ; interrupt mode 1, for cleanliness
+  ld a, $01
+  out ($03), a ; ON
+  ei ; Enable interrupting when ON is pressed
+  halt ; and halt :)
+  jp Boot
 
 DEMulA:        ; HL = DE × A
   ld HL, 0     ; Use HL to store the product

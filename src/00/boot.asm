@@ -2,36 +2,18 @@
 ; Initializes hardware and starts OS
 
 Boot:
-ShutDown:
-  di
-  ; Some of this appears redundant, but it has to be done so that ShutDown and Reboot can both be called regardless of the state of the calculator
-  ld a, 6
-  out (4), a ; Memory mode 0
-  ; Set memory mapping
-  ; Bank 0: Flash Page 00
-  ; Bank 1: Flash Page *
-  ; Bank 2: RAM Page 01
-  ; Bank 3: RAM Page 00
-  ; In this order for consistency with TI-83+ and TI-73 mapping
-  ld a, $81
-  out (7), a
-  ld sp, 0
-  call Sleep
-
-Reboot:
   di
 
   ld sp, 0
+  ; Memory mode 0
+  ; Timers 1&2 mode slowest
   ld a, 6
-  out (4), a ; Memory mode 0
+  out (4), a
   ; Set memory mapping
   ; Bank 0: Flash Page 00
-  ; Bank 1: Flash Page *
-  ; Bank 2: RAM Page 01
+  ; Bank 1: unset
+  ; Bank 2: unset
   ; Bank 3: RAM Page 00
-  ; In this order for consistency with TI-83+ and TI-73 mapping
-  ld a, $81
-  out (7), a
 
   ; Initialize hardware
   ld a, 3
@@ -54,14 +36,12 @@ Reboot:
   ld a, 1
   out ($20), a
 
-  ; Set interrupt mode
-  ld a, %0001011
-  out (3), a
-
+  xor A
+  out ($05), A
   ; Clear RAM
-  ld hl, $8000
+  ld hl, $C000
   ld (hl), 0
-  ld de, $8001
+  ld de, $C001
   ld bc, $7FFF
   ldir
 
@@ -90,23 +70,55 @@ Reboot:
   call LCDDelay
   out (10h), a ; Contrast
 
-  ; Congrats!  You've booted up your calculator.  Now do something interesting.
+  ; Setup crystal timer 1 for scheduler
+  ; https://wikiti.brandonw.net/index.php?title=83Plus:Ports:30
+  ; 32768Hz, 256 loops, 15MHz
+  ; = interrupt 128 times a second
+  ; = 11k instructions per loop
+  ; see interrupt.asm : IntHandleCrystal1
+  ld A, $45
+  out ($30), A
+  ld A, %00000011
+  out ($31), A
+  ld A, $FF
+  out ($32), A
 
+  ; Set interrupt mode
+  ld A, %00101001
+  out ($03), A
 
-  ld iy, $8100
-  ld hl, SmileyFace
-  ld b, 4
-  ld de, 0
-  call PutSpriteOR
+  ; init process 1
+  ; RAM has been cleared, so we just have to set non-zero values
+  ld IX, $C000
+  ; PID in ready queue
+  ld (IX), $01
+  ; code memory table
+  ld (IX+$08), $02
+;   ; SP low byte
+;   ld (IX+$09), $E9
+;   ; SP high byte
+;   ld (IX+$0A), $FF
+  ld SP, $FFEA
 
-  call BufferToLCD
+  ld A, $01
+  out ($05), A
+  ld HL, $4000
+  ld ($FFFE), HL
 
-  call FlushKeys
-  call WaitKey
-  jp ShutDown
+  jp IntHandleCrystal1
 
-SmileyFace:
-  .db %01110000
+SmileyFace0:
+  .db %00000000
+  .db %00000000
+  .db %00000000
+  .db %00000000
+SmileyFace1:
+  .db %01010000
   .db %00000000
   .db %10001000
   .db %01110000
+SmileyFace2:
+  .db %01010000
+  .db %00000000
+  .db %01110000
+  .db %10001000

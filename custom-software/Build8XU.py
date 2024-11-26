@@ -65,7 +65,21 @@ outputFileName = "trial.8xu"
 
 
 # pages = [(page number, offset, filename) ...]
-pages = [(0x7C, 0x0000, "../src/7C/base.bin"), (0x00, 0x0000, "../src/00/base.bin")]
+# pages = [(0x7C, 0x0000, "../src/7C/base.bin"), (0x00, 0x0000, "../src/00/base.bin")]
+pages = []
+
+for arg in sys.argv[1:]:
+  if arg[0] == "-":
+    print("no other options supported yet, only input files...")
+    quit()
+  arg = arg.split(":")
+  if len(arg) != 3:
+    print("each file should have 3 values: [page]:[offset]:[filename]")
+    quit()
+  arg[0] = int(arg[0], 16)
+  arg[1] = int(arg[1], 16)
+  pages.append(tuple(arg))
+
 # This implicitly sorts based on the first element, (page number).
 pages.sort()
 
