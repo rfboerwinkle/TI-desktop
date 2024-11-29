@@ -26,6 +26,7 @@ sysCallTable:
   jr sysCallShutdown
   jr sysCallSpawn
   jr sysCallKill
+  jr sysCallGetPID
   jr sysCallWriteLCD
 
 sysCallShutdown:
@@ -43,8 +44,19 @@ sysCallSpawn:
   ld (IY), L
   jr endSysCall
 
-; this should kill things
 sysCallKill:
+  ld L, (IX+1)
+  call KillProcess
+  jr endSysCall
+
+; UNTESTED
+sysCallGetPID:
+  call GetPID
+  ld D, (IX+1)
+  ld E, (IX+2)
+  ld IY, $0000
+  add IY, DE
+  ld (IY), L
   jr endSysCall
 
 sysCallWriteLCD:
@@ -54,7 +66,6 @@ sysCallWriteLCD:
   add IY, BC
   call BufferToLCD
   jr endSysCall
-
 
 endSysCall:
   pop HL

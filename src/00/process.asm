@@ -9,7 +9,7 @@ SpawnProcess:
   in A, ($05)
   ld E, A
   exx
-  ld A, $80
+  ld A, $00
   out ($05), A
 
   ; DE = PCB_SIZE
@@ -72,32 +72,84 @@ _:
   ret
 
 ; Brief: kills a process
-; Input: D = PID
-; NOTE: no protection against a process killing itself. that will do bad things!
-; KillProcess:
-;   in A, ($05) ; RAM page to return to
-;   ld E, A
-;   ld C, $80
-;   out ($05), C ; kernel RAM page
-;
-;   ; calculate address of PCB
-;   ld H, $C0
-;   ld A, D
-;   add A, $07
-;   ld L, A
-;
-;   ; clear the PCB (yes it's 1 byte rn...)
-;   ld (HL), $00
-;
-;   ; shift and search for PID from the end
-;   ld IX, $0007
-; _:
-;   dec IX
-;   ld A, (IX)
-;   ld B, (IX+1)
-;   ld (IX), B
-;   xor D
-;   jr NZ -_
-;
-;   out ($05), E
-;   ret
+; Input: L = PID
+KillProcess:
+  ; C = RAM page to return to
+  in A, ($05)
+  ld C, A
+
+  ; load kernel RAM page
+  ld A, $00
+  out ($05), A
+
+  ; DE = PCB_SIZE
+  ld DE, PCB_SIZE
+
+  ; IX = PCB address
+  ld B, L
+  ld IX, $C008 - PCB_SIZE
+_:
+  add IX, DE
+  djnz -_
+
+  ; clear the PCB
+  ; This is dependent on PCB_SIZE
+  ; (so you can search for that string)
+  ld (IX), $00
+  ld (IX+$01), $00
+  ld (IX+$02), $00
+
+  ; H = currently running PID
+  ; i.e. calling PID
+  ld A, ($C000)
+  ld H, A
+
+  ; shift and search for PID from the end
+  ld IX, $C007
+  ld B, $00
+_:
+  dec IX
+  ld A, (IX)
+  ld (IX), B
+  ld B, A
+  cp L
+  jr NZ, -_
+
+  ; if (H == L)
+  ;   load next process as if normally scheduled context switch
+  ; else
+  ;   regular exit
+  ld A, L
+  cp H
+  jr NZ, _
+  ; You might think that there would be an extra PC on the stack that is being
+  ; mangled, but fear not, the "call KillProcess" in "interrupt.asm" was on the
+  ; user stack, so it gets thrown out.
+  jp schedulerLoad
+_:
+
+  ; restore RAM page
+  ld A, C
+  out ($05), A
+  ret
+
+; Brief: returns the currently running PID
+; Output: L = PID
+; Note: Does not modify IX
+GetPID:
+  ; E = old RAM page
+  ; load kernel RAM page
+  in A, ($05)
+  ld E, A
+  ld A, $80
+  out ($05), A
+
+  ; L = current PID
+  ld A, ($C000)
+  ld L, A
+
+  ; restore RAM page
+  ld A, E
+  out ($05), A
+
+  ret

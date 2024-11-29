@@ -115,7 +115,12 @@ _:
   djnz -_
   ld (IX), A
 
-  ; IX = first byte of old PCB
+schedulerLoad:
+  ; should be set already, unless you jump directly to this label ^
+  ; DE = PCB_SIZE
+  ld DE, PCB_SIZE
+
+  ; IX = first byte of new PCB
   ld A, ($C000)
   ld B, A
   ld IX, $C008 - PCB_SIZE

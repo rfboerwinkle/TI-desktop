@@ -9,6 +9,8 @@
   rst $08
   nop
   nop
+  ld IX, killSelf
+  rst $08
 loop:
   jp loop
 
@@ -17,6 +19,5 @@ spawnFiller:
 spawnClearer:
   .db $02, $04, $C0, $00
 ; this really should dynamically get its own pid...
-; also, kill oneself is not yet supported!
 killSelf:
   .db $04, $01

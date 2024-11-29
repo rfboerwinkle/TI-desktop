@@ -1,6 +1,53 @@
 ; OS Display Routines
 ; Provides routines for manipulating a buffer, as well as the screen
 
+; Brief: updates the LCD based on the graphical delta buffer
+UpdateLCD:
+  ; D and E will by X and Y
+  ld D, $00
+  ld E, $00
+
+  ; IX = start of graphical buffer
+  ld IX, $0022
+  ; IY = start of graphical delta buffer
+  ld IY, $0322
+
+  ; L is 1 if the Y position needs to be set, 0 otherwise
+  ld L, $01
+
+  ;
+columnLoop:
+  ; C is temp Y coordinate
+  ld C, E
+  ; H = delta byte
+  ld H, (IY)
+byteLoop:
+  ; shift H right and update screen based on carry bit
+  ld A, $00
+  cp H
+  jr Z emptyByte
+  sra H
+  jr NC, _
+  ld A, $00
+  cp L
+  jr
+  ; write byte at C
+  ld L, $00
+  jr +_
+_:
+  ld L, $01
+_:
+  inc C
+  jr NZ byteLoop
+
+emptyByte:
+  ld L, $01
+lastBitSet:
+  ; E = E + $08
+  ld A, E
+  add $08
+  ld E, A
+
 ; Clears an LCD buffer
 ; Input: IY: Buffer
 ClearBuffer:
