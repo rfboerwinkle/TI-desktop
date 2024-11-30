@@ -27,7 +27,8 @@ sysCallTable:
   jr sysCallSpawn
   jr sysCallKill
   jr sysCallGetPID
-  jr sysCallWriteLCD
+  jr sysCallSetPaneBuffer
+  jr sysCallDrawText
 
 sysCallShutdown:
   jp Shutdown
@@ -59,12 +60,18 @@ sysCallGetPID:
   ld (IY), L
   jr endSysCall
 
-sysCallWriteLCD:
-  ld B, (IX+1)
-  ld C, (IX+2)
+sysCallSetPaneBuffer:
+  ld L, (IX+1)
+  ld H, (IX+2)
+  call SetPaneBuffer
+  jr endSysCall
+
+sysCallDrawText:
+  ld C, (IX+1)
+  ld B, (IX+2)
   ld IY, $0000
   add IY, BC
-  call BufferToLCD
+  call DrawText
   jr endSysCall
 
 endSysCall:

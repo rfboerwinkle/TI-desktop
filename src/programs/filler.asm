@@ -1,5 +1,7 @@
 .org $4000
   ld IX, args
+  rst $08
+
   ld DE, $0000
   ld A, $00
   ld HL, $C000
@@ -30,8 +32,7 @@ _:
   ld HL, $C000
 _:
   ld (HL), A
-  rst $08
   jr loop
 
 args:
-  .db $06, $C0, $00
+  .db $08, $00, $C0

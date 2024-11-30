@@ -46,29 +46,35 @@ Boot:
   ldir
 
   ; Initialize LCD
-  ld a, 05h
+  ; 8-bit mode
+  ld A, $01
   call LCDDelay
-  out (10h), a ; X-Increment Mode
+  out ($10), A
 
-  ld a, 01h
+  ; X-Increment Mode (move down one row each time?)
+  ld A, $05
   call LCDDelay
-  out (10h), a ; 8-bit mode
+  out ($10), A
 
-  ld a, 3
+ ; Enable screen
+  ld A, $03
   call LCDDelay
-  out (10h), a ; Enable screen
+  out ($10), A
 
-  ld a, $17 ; versus $13? TIOS uses $17, and that's the only value that works (the datasheet says go with $13)
+  ; Op-amp control (OPA1) set to max (with DB1 set for some reason)
+  ld A, $17 ; versus $13? TIOS uses $17, and that's the only value that works (the datasheet says go with $13)
   call LCDDelay
-  out (10h), a ; Op-amp control (OPA1) set to max (with DB1 set for some reason)
+  out ($10), A
 
-  ld a, $B ; B
+  ; Op-amp control (OPA2) set to max
+  ld A, $0B
   call LCDDelay
-  out (10h), a ; Op-amp control (OPA2) set to max
+  out ($10), A
 
-  ld a, $EF
+  ; Contrast
+  ld A, $EF
   call LCDDelay
-  out (10h), a ; Contrast
+  out ($10), A
 
   ; Setup crystal timer 1 for scheduler
   ; https://wikiti.brandonw.net/index.php?title=83Plus:Ports:30
@@ -92,12 +98,14 @@ Boot:
   ld IX, $C000
   ; PID in ready queue
   ld (IX), $01
-  ; code memory table
+  ; code memory
   ld (IX+$08), $02
-;   ; SP low byte
-;   ld (IX+$09), $E9
-;   ; SP high byte
-;   ld (IX+$0A), $FF
+  ; high byte of pane buffer
+  ld (IX+$0B), $C0
+  ld A, $02
+  ld ($C000 + PID_LEFT_PANE_AD), A
+  ld A, $03
+  ld ($C000 + PID_RIGHT_PANE_AD), A
   ld SP, $FFEA
 
   ld A, $01
@@ -106,19 +114,3 @@ Boot:
   ld ($FFFE), HL
 
   jp IntHandleCrystal1
-
-SmileyFace0:
-  .db %00000000
-  .db %00000000
-  .db %00000000
-  .db %00000000
-SmileyFace1:
-  .db %01010000
-  .db %00000000
-  .db %10001000
-  .db %01110000
-SmileyFace2:
-  .db %01010000
-  .db %00000000
-  .db %01110000
-  .db %10001000

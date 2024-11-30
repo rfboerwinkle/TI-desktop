@@ -2,7 +2,7 @@ import png
 img = None
 # character width
 c_width = 4
-with open('TI_Font.png', 'rb') as fp:
+with open('FontImage.png', 'rb') as fp:
 	img = (png.Reader(file=fp)).read_flat()
 	size = (img[0],img[1])
 	img = list(img[2])

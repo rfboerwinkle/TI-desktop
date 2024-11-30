@@ -8,7 +8,11 @@ FLASH_EXECUTABLE_RAM .equ $8000
 FLASH_EXECUTABLE_RAM_SIZE .equ 100
 SWAP_SECTOR .equ $78
 ; Size of each PCB.
-PCB_SIZE .equ $03
+PCB_SIZE .equ $05 ; this needs hand-changes
+PCB_TABLE_AD .equ $0008
+SP_LOADING_AD .equ $0030
+PID_LEFT_PANE_AD .equ $0032
+PID_RIGHT_PANE_AD .equ $0033
 
 ; Boot up and special sections
 #include "header.asm"

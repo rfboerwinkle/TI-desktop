@@ -18,7 +18,7 @@ SpawnProcess:
   ; search the code memory table for unused RAM page
   ; C = new PID
   ; IX = address of C in the pcb table
-  ld IX, $C008 - PCB_SIZE
+  ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
   ld C, $00
 _:
   add IX, DE
@@ -45,6 +45,8 @@ _:
   exx
   ld (IX+1), $EA
   ld (IX+2), $FF
+  ld (IX+3), $C0
+  ld (IX+4), $00
 
   ; go to end of ready queue
   ld HL, $BFFF
@@ -87,7 +89,7 @@ KillProcess:
 
   ; IX = PCB address
   ld B, L
-  ld IX, $C008 - PCB_SIZE
+  ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
 _:
   add IX, DE
   djnz -_
@@ -98,6 +100,8 @@ _:
   ld (IX), $00
   ld (IX+$01), $00
   ld (IX+$02), $00
+  ld (IX+$03), $00
+  ld (IX+$04), $00
 
   ; H = currently running PID
   ; i.e. calling PID
@@ -150,6 +154,33 @@ GetPID:
 
   ; restore RAM page
   ld A, E
+  out ($05), A
+
+  ret
+
+; Brief: sets the pane buffer address of the currently running PID
+; Input: HL = pane buffer address
+SetPaneBuffer:
+  ; C = old RAM
+  ; swap to kernel RAM
+  in A, ($05)
+  ld C, A
+  ld A, $00
+  out ($05), A
+
+  ; set pane buffer address
+  ld A, ($C000)
+  ld DE, PCB_SIZE
+  ld B, A
+  ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
+_:
+  add IX, DE
+  djnz -_
+  ld (IX+$03), L
+  ld (IX+$04), H
+
+  ; swap to old RAM
+  ld A, C
   out ($05), A
 
   ret

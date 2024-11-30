@@ -83,6 +83,8 @@ IntHandleCrystal1:
   ; Crystal timer 1 interrupt
   ; This is the scheduler
 
+  call UpdatePane
+
   ; load kernel memory space
   ld A, $00
   out ($05), A
@@ -94,16 +96,16 @@ IntHandleCrystal1:
   ; A = PID
   ld A, ($C000)
   ld B, A
-  ld IX, $C008 - PCB_SIZE
+  ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
 _:
   add IX, DE
   djnz -_
 
   ; write SP to table
-  ld ($C020), SP
-  ld HL, ($C020)
-  ld (IX+2), H
+  ld ($C000 + SP_LOADING_AD), SP
+  ld HL, ($C000 + SP_LOADING_AD)
   ld (IX+1), L
+  ld (IX+2), H
 
   ; cycle the ready queue
   ld IX, $BFFF
@@ -123,7 +125,7 @@ schedulerLoad:
   ; IX = first byte of new PCB
   ld A, ($C000)
   ld B, A
-  ld IX, $C008 - PCB_SIZE
+  ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
 _:
   add IX, DE
   djnz -_
