@@ -93,6 +93,18 @@ Boot:
   ld A, %00101001
   out ($03), A
 
+  ; init kernel pane info
+  ld A, $BF
+  ld HL, $C000 + KERNEL_PANE_AD
+  ld B, $18
+_:
+  ld (HL), A
+  inc HL
+  djnz -_
+  dec HL
+  ld A, $B3
+  ld (HL), A
+
   ; init process 1
   ; RAM has been cleared, so we just have to set non-zero values
   ld IX, $C000
@@ -108,6 +120,7 @@ Boot:
   ld ($C000 + PID_RIGHT_PANE_AD), A
   ld SP, $FFEA
 
+  ; set the PC (at the bottom of the stack) to the top of user code memory
   ld A, $01
   out ($05), A
   ld HL, $4000

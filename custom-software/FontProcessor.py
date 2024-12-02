@@ -27,7 +27,7 @@ for c_idx in range(c_count):
 	chars.append(v)
 #print(size)
 
-charorder = "0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,=,-,+,*,/,.,:,!,',^,PATETO,(,),<,>,#,_,P-HOR,P-VER,P-C-UL,P-C-UR,P-C-LR,P-C-LL,P-T-T,P-T-R,P-T-B,P-T-L,SPACE".split(',')
+charorder = "0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,=,-,+,*,/,.,:,!,',^,PATETO,(,),<,>,#,_,P-HOR,P-VER,P-CUL,P-CUR,P-CDR,P-CDL,P-TU,P-TR,P-TD,P-TL,SPACE".split(',')
 assert(len(charorder) == c_count)
 
 #print(charorder)

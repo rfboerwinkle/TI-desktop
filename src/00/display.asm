@@ -64,7 +64,7 @@ _:
   inc HL
   ld C, (HL)
   inc IY
-  ; DE = first character
+  ; DE = second character
   ld D, $00
   ld A, (IY)
   and %00111111
@@ -200,157 +200,149 @@ _:
   ; return to scheduler who called this process
   ret
 
-; Clears an LCD buffer
-; Input: IY: Buffer
-ClearBuffer:
-  push hl
-  push de
-  push bc
-    push iy \ pop hl
-    ld (hl), 0
-    ld d, h
-    ld e, l
-    inc de
-    ld bc, 767
-    ldir
-  pop bc
-  pop de
-  pop hl
+; Brief: updates the bottom $5 rows of pixels based on kernel state
+; Note: assumes kernel memory page is loaded
+UpdateKernelPane:
+  ; Y-increment, column 0, row 3B
+  ld A, $07
+  out ($10), A
+  ld A, $20
+  call LCDDelay
+  out ($10), A
+  ld A, $BB
+  call LCDDelay
+  out ($10), A
+
+  ; A = is left pane selected ? $FF : $00
+  ld A, ($C000 + PANE_FLAG_AD)
+  bit 4, A
+  jr Z, _
+  ld A, $00
+  jr +_
+_:
+  ld A, $FF
+_:
+
+  ; output 6 columns, then complement A and repeat
+  ld B, $06
+_:
+  call LCDDelay
+  out ($11), A
+  djnz -_
+  cpl
+  ld B, $06
+_:
+  call LCDDelay
+  out ($11), A
+  djnz -_
+
+  ; X-increment mode
+  ld A, $05
+  call LCDDelay
+  out ($10), A
+
+  ; IX = start of kernel pane
+  ld IX, $C000 + KERNEL_PANE_AD
+
+  ; B' = # columns to draw
+  ; C' = column
+  ld B, $0C
+  ld C, $20
+
+  ; This exx is to put the previous registers into the (') slot, but also is
+  ; matched with an exx right before the "jp NZ, kernelPaneCharLoop".
+kernelPaneCharLoop:
+  exx
+
+  ; A = next char to draw
+  ld A, (IX)
+  inc IX
+  ; BC = first character
+  ld D, $00
+  and %00111111
+  ld E, A
+  ld HL, FONT
+  add HL, DE
+  add HL, DE
+  ld B, (HL)
+  inc HL
+  ld C, (HL)
+
+  ; A = next char to draw
+  ld A, (IX)
+  inc IX
+  ; DE = second character
+  ld D, $00
+  and %00111111
+  ld E, A
+  ld HL, FONT
+  add HL, DE
+  add HL, DE
+  ld D, (HL)
+  inc HL
+  ld E, (HL)
+
+  ; reset pointer
+  ld A, $BC
+  out ($10), A
+  exx
+  ld A, C
+  inc C
+  exx
+  call LCDDelay
+  out ($10), A
+
+  ; draw first byte
+  ld A, B
+  and %11110000
+  ld H, A
+  ld A, D
+  srl A \ srl A \ srl A \ srl A
+  add A, H
+  call LCDDelay
+  out ($11), A
+  ; draw second byte
+  ld A, B
+  sla A \ sla A \ sla A \ sla A
+  ld H, A
+  ld A, D
+  and %00001111
+  add A, H
+  call LCDDelay
+  out ($11), A
+  ; draw third byte
+  ld A, C
+  and %11110000
+  ld H, A
+  ld A, E
+  srl A \ srl A \ srl A \ srl A
+  add A, H
+  call LCDDelay
+  out ($11), A
+  ; draw fourth byte
+  ld A, C
+  sla A \ sla A \ sla A \ sla A
+  ld H, A
+  ld A, E
+  and %00001111
+  add A, H
+  call LCDDelay
+  out ($11), A
+
+  exx
+  dec B
+  jp NZ, kernelPaneCharLoop
+
   ret
 
-; ; Brief: Copy the buffer to the screen, guaranteed
-; BufferToLCD:
-;   ld A, I
-;   ld HL, GBUF_ADDRESS
-;   ld C, $10
-;   ld A, $80
-; setRow:
-;   in F, (C)
-;   jp m, setRow
-;   out ($10), A
-;   ld DE, $000C
-;   ld A, $20
-; col:
-;   in F, (C)
-;   jp m, col
-;   out ($10), A
-;   push AF
-;   ld B, 64
-; row:
-;   ld A, (HL)
-; rowWait:
-;   in F, (C)
-;   jp m, rowWait
-;   out ($11), A
-;   add HL, DE
-;   djnz row
-;   pop AF
-;   dec H
-;   dec H
-;   dec H
-;   inc HL
-;   inc A
-;   cp $2C
-;   jp nz, col
-;
-;   ret
-
+; Brief: wait until the LCD can be written
 LCDDelay:
   push af
-
 _:
   in a, ($10)
   rla
   jr c, -_
-
   pop af
-  ret
-
-; brief: utility for pixel manipulation
-; input: a -> x coord, l -> y coord, IY -> graph buffer
-; output: hl -> address in graph buffer, a -> pixel mask
-; destroys: b, de
-GetPixel:
-  ld h, 0
-  ld d, h
-  ld e, l
-
-  add hl, hl
-  add hl, de
-  add hl, hl
-  add hl, hl
-
-  ld e, a
-  srl e
-  srl e
-  srl e
-  add hl, de
-
-  push iy \ pop de
-  add hl, de
-
-  and 7
-  ld b, a
-  ld a, $80
-  ret z
-
-  rrca
-  djnz $-1
-
-  ret
-
-; Brief: set (darkens) a pixel in the graph buffer
-; Input: a -> x coord, l -> y coord
-; Output: none
-SetPixel:
-  push hl
-  push de
-  push af
-  push bc
-    call GetPixel
-    or (hl)
-    ld (hl), a
-  pop bc
-  pop af
-  pop de
-  pop hl
-  ret
-
-; Brief: reset (lighten) a pixel in the graph buffer
-; Input: a -> x coord, l -> y coord
-; Output: none
-; Destroys: a, b, de, hl
-ResetPixel:
-  push hl
-  push de
-  push af
-  push bc
-    call GetPixel
-    cpl
-    and (hl)
-    ld (hl), a
-  pop bc
-  pop af
-  pop de
-  pop hl
-  ret
-
-; Brief: flip (invert) a pixel in the graph buffer
-; Input: a -> x coord, l -> y coord
-; Output: none
-; Destroys: a, b, de, hl
-InvertPixel:
-  push hl
-  push de
-  push af
-  push bc
-    call GetPixel
-    xor (hl)
-    ld (hl), a
-  pop bc
-  pop af
-  pop de
-  pop hl
   ret
 
 ; Brief: Fast line routine, only sets pixels
@@ -1701,15 +1693,15 @@ alignedloopand:
 ; $84 4   $94 K   $A4 =   $B4 _
 ; $85 5   $95 L   $A5 -   $B5 P-HOR
 ; $86 6   $96 M   $A6 +   $B6 P-VER
-; $87 7   $97 N   $A7 *   $B7 P-C-UL
-; $88 8   $98 O   $A8 /   $B8 P-C-UR
-; $89 9   $99 P   $A9 .   $B9 P-C-LR
-; $8A A   $9A Q   $AA :   $BA P-C-LL
-; $8B B   $9B R   $AB !   $BB P-T-T
-; $8C C   $9C S   $AC '   $BC P-T-R
-; $8D D   $9D T   $AD ^   $BD P-T-B
-; $8E E   $9E U   $AE v   $BE P-T-L
-; $8F F   $9F V   $AF (   $BF SP
+; $87 7   $97 N   $A7 *   $B7 P-CUL
+; $88 8   $98 O   $A8 /   $B8 P-CUR
+; $89 9   $99 P   $A9 .   $B9 P-CDR
+; $8A A   $9A Q   $AA :   $BA P-CDL
+; $8B B   $9B R   $AB !   $BB P-TU
+; $8C C   $9C S   $AC '   $BC P-TR
+; $8D D   $9D T   $AD ^   $BD P-TD
+; $8E E   $9E U   $AE v   $BE P-TL
+; $8F F   $9F V   $AF (   $BF SPACE
 ;
 ; NOTE: "v" indicates the pateto character
 
@@ -1733,7 +1725,7 @@ FONT:
 .db $04, $04, $44, $04, $44, $00, $4A, $00, $A4, $00, $24, $42
 ; ) < > # _ P-HOR
 .db $42, $24, $06, $86, $0C, $2C, $AF, $AF, $00, $0E, $0F, $00
-; P-VER P-C-UL P-C-UR P-C-LR P-C-LL P-T-T
+; P-VER
 .db $44, $44, $07, $44, $0C, $44, $4C, $00, $47, $00, $0F, $44
-; P-T-R P-T-B P-T-L SPACE
+; P-TR P-TD P-TL SPACE
 .db $4C, $44, $4F, $00, $47, $44, $00, $00

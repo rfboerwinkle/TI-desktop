@@ -86,8 +86,11 @@ IntHandleCrystal1:
   call UpdatePane
 
   ; load kernel memory space
+  ; TODO: figure out what the fuck to do about the SP
   ld A, $00
   out ($05), A
+
+  call HandleKeys
 
   ; DE = PCB_SIZE
   ld DE, PCB_SIZE
