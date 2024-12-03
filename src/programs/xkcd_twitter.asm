@@ -18,7 +18,9 @@
   ; https://en.wikipedia.org/wiki/Linear-feedback_shift_register
   ld DE, $ACE1
 loop:
-  ld B, $8F
+  ld B, $FF
+_:
+  ld A, $FF
 _:
   nop
   nop
@@ -27,16 +29,9 @@ _:
   nop
   nop
   nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  djnz -_
+  dec A
+  jr NZ, -_
+  djnz --_
 
   ; DE = DE xor DE>>7
   ld B, D
@@ -153,7 +148,7 @@ horse1:
 horse2:
   .db $91, $98, $9B, $9C, $8E, $BF, $92, $97, $BF, $BF, $BF, $BF
 horse3:
-  .db $92, $9C, $95, $8E, $BF, $85, $A9, $BF, $BF, $BF, $BF, $BF
+  .db $8A, $92, $9C, $95, $8E, $BF, $85, $A9, $BF, $BF, $BF, $BF
 
 house1:
   .db $96, $A2, $BF, $91, $98, $9E, $9C, $8E, $BF, $92, $9C, $BF
@@ -162,7 +157,7 @@ house2:
 house3:
   .db $9D, $9B, $8A, $99, $9C, $AB, $BF, $BF, $BF, $BF, $BF, $BF
 
-; T  H  E  R  E  '  S     A     H  O  R  S  E     I  N     I  S  L  E     5  .
-; 9D 91 8E 9B 8E AC 9C BF 8A BF 91 98 9B 9C 8E BF 92 97 BF 92 9C 95 8E BF 85 A9
+; T  H  E  R  E  '  S     A     H  O  R  S  E     I  N     A  I  S  L  E     5  .
+; 9D 91 8E 9B 8E AC 9C BF 8A BF 91 98 9B 9C 8E BF 92 97 BF 8A 92 9C 95 8E BF 85 A9
 ; M  Y     H  O  U  S  E     I  S     F  U  L  L     O  F     T  R  A  P  S  !
 ; 96 A2 BF 91 98 9E 9C 8E BF 92 9C BF 8F 9E 95 95 BF 98 8F BF 9D 9B 8A 99 9C AB

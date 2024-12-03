@@ -16,6 +16,7 @@ SysInterrupt:
   push bc
   push de
   push hl
+  ld ($C000 + SP_AD), SP
 
   jp USBInterrupt
 
@@ -80,37 +81,67 @@ IntHandleCrystal1:
   ; see boot.asm
   ld A, %00000011
   out ($31), A
-  ; Crystal timer 1 interrupt
+
   ; This is the scheduler
 
-  call UpdatePane
-
   ; load kernel memory space
-  ; TODO: figure out what the fuck to do about the SP
+  ; we are guaranteed the SP has already written, no calls between here and when
+  ; the last proc was iced.
   ld A, $00
   out ($05), A
+  ld SP, ($C000 + SP_AD)
 
-  call HandleKeys
-
-  ; DE = PCB_SIZE
-  ld DE, PCB_SIZE
-
-  ; IX = first byte of old PCB
-  ; A = PID
+  ; A = old PID
+  ; if (no running process)
+  ;   skip to taking input
   ld A, ($C000)
+  cp $00
+  jr Z, Idling
+
+  ; HL = pane buffer address
   ld B, A
+  ld DE, PCB_SIZE
   ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
 _:
   add IX, DE
   djnz -_
+  ld L, (IX+$03)
+  ld H, (IX+$04)
 
-  ; write SP to table
-  ld ($C000 + SP_LOADING_AD), SP
-  ld HL, ($C000 + SP_LOADING_AD)
-  ld (IX+1), L
-  ld (IX+2), H
+  ; C = starting column
+  ld IX, $C000 + PID_LEFT_PANE_AD
+  cp (IX)
+  jr NZ, _
+  ld C, $00
+  jr yesUpdatePane
+_:
+  ld IX, $C000 + PID_RIGHT_PANE_AD
+  cp (IX)
+  jr NZ, _
+  ld C, $06
+  jr yesUpdatePane
+_:
+
+  jr noUpdatePane
+
+yesUpdatePane:
+  ; return to old RAM page
+  ; update pane
+  ; back to kernel page
+  ld A, ($C000)
+  ld ($C000 + SP_AD), SP
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  call UpdatePane
+  ld A, $00
+  ld ($C000 + SP_AD), SP
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+
+noUpdatePane:
 
   ; cycle the ready queue
+  ld A, ($C000)
   ld IX, $BFFF
 _:
   inc IX
@@ -120,13 +151,22 @@ _:
   djnz -_
   ld (IX), A
 
+; while idling, we might need to do something else to wait a little for debounce stuff...
+Idling:
+  call HandleKeys
+
+  call UpdateKernelPane
+
 schedulerLoad:
   ; should be set already, unless you jump directly to this label ^
   ; DE = PCB_SIZE
   ld DE, PCB_SIZE
 
   ; IX = first byte of new PCB
+  ; (unless there is no process, in which case just return to idling)
   ld A, ($C000)
+  cp $00
+  jr Z, Idling
   ld B, A
   ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
 _:
@@ -137,14 +177,11 @@ _:
   ld A, (IX)
   out ($06), A
 
-  ; read new SP
-  ld H, (IX+$02)
-  ld L, (IX+$01)
-  ld SP, HL
-
   ; load new memory page
   ld A, ($C000)
+  ld ($C000 + SP_AD), SP
   out ($05), A
+  ; loading new SP is done by the SysInterruptDone
 
   jr SysInterruptDone
 IntHandleCrystal2:
@@ -163,6 +200,7 @@ IntHandleCrystal3:
   out (03h), a
   ; Crystal timer 3 interrupt
 SysInterruptDone:
+  ld SP, ($C000 + SP_AD)
   pop hl
   pop de
   pop bc

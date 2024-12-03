@@ -3,12 +3,31 @@
 
 ; Brief: Does all the things the kernel should do with keys.
 ; Note: Assumes the kernel memory page is loaded.
-HandleKeys:
+HandleKeys: ; 0EA9
   ; A = key
-  ; if (A == 0) return
   call GetKey
+
+  ; HL = flag byte address
+  ld HL, $C000 + PANE_FLAG_AD
+
+  ; if (A == 0) {
+  ;   reset key pressed flag
+  ;   return
+  ; }
   cp $00
-  ret Z
+  jr NZ, _
+  res 6, (HL)
+  ret
+_:
+
+  ; if (key pressed flag)
+  ;   return
+  bit 6, (HL)
+  ret NZ
+
+  ; set key pressed flag
+
+  set 6, (HL)
 
   ; if (A > $20) jr notText
   cp $21
@@ -58,65 +77,214 @@ _:
   ret
 
 notText:
-  sub $20
+  sub $21
   ld HL, keyJmpArray
   ld B, $00
   ld C, A
   add HL, BC
   add HL, BC
+  add HL, BC
+  jp (HL)
 keyJmpArray:
-  jr key_21
-  jr key_22
-  jr key_23
-  jr key_24
-  jr key_25
-  jr key_26
-  jr key_27
-  jr key_28
-  jr key_29
-  jr key_2A
-  jr key_2B
-  jr key_2C
-  jr key_2D
-  jr key_2E
-  jr key_2F
-  jr key_30
-  jr key_31
+  jp key_21
+  jp key_22
+  jp key_23
+  jp key_24
+  jp key_25
+  jp key_26
+  jp key_27
+  jp key_28
+  jp key_29
+  jp key_2A
+  jp key_2B
+  jp key_2C
+  jp key_2D
+  jp key_2E
+  jp key_2F
+  jp key_30
+  jp key_31
 
-
+; select left pane
 key_21:
-  ret
+  ld HL, $C000 + PANE_FLAG_AD
+  res 4, (HL)
+  jp endNotText
 key_22:
   ret
 key_23:
   ret
 key_24:
   ret
+
+; select right pane
 key_25:
-  ret
+  ld HL, $C000 + PANE_FLAG_AD
+  set 4, (HL)
+  jp endNotText
+
+; start proc
 key_26:
-  ret
+  ld A, ($C000 + KERNEL_PANE_AD)
+  and %00001111
+  ld B, A
+  ld A, ($C000 + KERNEL_PANE_AD + $0001)
+  and %00001111
+  add A, B
+  ld H, A
+  call SpawnProcess
+  jp key_30
+
+; select proc
 key_27:
-  ret
+  ld A, ($C000 + KERNEL_PANE_AD)
+  and %00000111
+  jr Z, nullPane
+  ld C, A
+
+  ld DE, PCB_SIZE
+  ld B, A
+  ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
+_:
+  add IX, DE
+  djnz -_
+  ld H, (IX+$04)
+  ld L, (IX+$03)
+
+  ld A, (IX)
+  cp $00
+  ld A, C ; does not affect F
+  jr Z, nullPane
+
+  ld E, A
+  ld IY, $C000 + PANE_FLAG_AD
+  bit 4, (IY)
+
+  jr Z, _
+  ld A, ($C000 + PID_LEFT_PANE_AD)
+  cp E
+  jr Z, nullPane
+  ld A, E
+  jr normPane
+_:
+  ld A, ($C000 + PID_RIGHT_PANE_AD)
+  cp E
+  jr Z, nullPane
+  ld A, E
+  jr normPane
+
+nullPane:
+  ld A, $00
+  ld HL, $C000 + PLACEHOLDER_PANE_AD
+
+normPane:
+  ld IY, $C000 + PANE_FLAG_AD
+  bit 4, (IY)
+  jr Z, _
+  ld ($C000 + PID_RIGHT_PANE_AD), A
+  ld C, $06
+  jr ++_
+_:
+  ld ($C000 + PID_LEFT_PANE_AD), A
+  ld C, $00
+_:
+
+  ld ($C000 + SP_AD), SP
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  call UpdatePane
+  ld ($C000 + SP_AD), SP
+  ld A, $00
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  jr key_30
+
+; kill proc
 key_28:
-  ret
+  ld A, ($C000 + KERNEL_PANE_AD)
+  and %00000111
+  ld C, A
+  push BC
+  ld HL, $C000 + KERNEL_PANE_AD
+  ld (HL), $BF
+  ld DE, $C000 + KERNEL_PANE_AD + $01
+  ld BC, $0C
+  ldir
+  ld HL, $C000 + PANE_FLAG_AD
+  ld A, (HL)
+  and %11110000
+  ld (HL), A
+  pop BC
+  jp KillProcess
 key_29:
   ret
+
+; move right
 key_2A:
-  ret
+  ld HL, $C000 + PANE_FLAG_AD
+  ld A, (HL)
+  and %00001111
+  inc A
+  cp $0C
+  jr NZ, _
+  ld A, $0B
+_:
+  ld B, A
+  ld A, (HL)
+  and %11110000
+  add A, B
+  ld (HL), A
+  jr endNotText
+
+; alpha / numeric toggle
 key_2B:
-  ret
+  ld HL, $C000 + PANE_FLAG_AD
+  bit 5, (HL)
+  jr Z, _
+  res 5, (HL)
+  jr endNotText
+_:
+  set 5, (HL)
+  jr endNotText
 key_2C:
   ret
 key_2D:
   ret
+
+; move left
 key_2E:
-  ret
+  ld HL, $C000 + PANE_FLAG_AD
+  ld A, (HL)
+  and %00001111
+  dec A
+  cp $FF
+  jr NZ, _
+  ld A, $00
+_:
+  ld B, A
+  ld A, (HL)
+  and %11110000
+  add A, B
+  ld (HL), A
+  jr endNotText
 key_2F:
   ret
+
+; clear
 key_30:
-  ret
+  ld HL, $C000 + KERNEL_PANE_AD
+  ld (HL), $BF
+  ld DE, $C000 + KERNEL_PANE_AD + $01
+  ld BC, $0C
+  ldir
+  ld HL, $C000 + PANE_FLAG_AD
+  ld A, (HL)
+  and %11110000
+  ld (HL), A
+  jr endNotText
 key_31:
+  ret
+
+endNotText:
   ret
 
 ; Brief: Gets the key being pressed

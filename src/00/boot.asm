@@ -4,11 +4,11 @@
 Boot:
   di
 
-  ld sp, 0
+  ld sp, $C000 + SP_AD
   ; Memory mode 0
   ; Timers 1&2 mode slowest
-  ld a, 6
-  out (4), a
+  ld A, $06
+  out ($04), A
   ; Set memory mapping
   ; Bank 0: Flash Page 00
   ; Bank 1: unset
@@ -101,29 +101,25 @@ _:
   ld (HL), A
   inc HL
   djnz -_
-  dec HL
-  ld A, $B3
-  ld (HL), A
 
-  ; init process 1
-  ; RAM has been cleared, so we just have to set non-zero values
-  ld IX, $C000
-  ; PID in ready queue
-  ld (IX), $01
-  ; code memory
-  ld (IX+$08), $02
-  ; high byte of pane buffer
-  ld (IX+$0B), $C0
-  ld A, $02
-  ld ($C000 + PID_LEFT_PANE_AD), A
-  ld A, $03
-  ld ($C000 + PID_RIGHT_PANE_AD), A
-  ld SP, $FFEA
+  ; init placeholder pane
+  ld IX, $C000 + PLACEHOLDER_PANE_AD + $0093
+  ld (IX+$0), %00011001
+  ld (IX+$1), %01100110
+  ld (IX+$2), %01000110
+  ld (IX+$3), %10001001
+  ld (IX+$4), %10010001
+  ld (IX+$5), %01100010
+  ld (IX+$6), %01100110
+  ld (IX+$7), %10011000
 
-  ; set the PC (at the bottom of the stack) to the top of user code memory
-  ld A, $01
-  out ($05), A
-  ld HL, $4000
-  ld ($FFFE), HL
+  ; init screen
+  ld HL, $C000 + PLACEHOLDER_PANE_AD
+  ld C, $00
+  call UpdatePane
+  ld HL, $C000 + PLACEHOLDER_PANE_AD
+  ld C, $06
+  call UpdatePane
+  call UpdateKernelPane
 
-  jp IntHandleCrystal1
+  jp Idling

@@ -3,15 +3,8 @@
 ; Brief: spawns a process from a page
 ; Input: H = page
 ; Output: L = PID
+; Note: Assumes kernel memory space
 SpawnProcess:
-  ; E' = old RAM page
-  ; load kernel RAM page
-  in A, ($05)
-  ld E, A
-  exx
-  ld A, $00
-  out ($05), A
-
   ; DE = PCB_SIZE
   ld DE, PCB_SIZE
 
@@ -29,24 +22,27 @@ _:
 
   ; if (C >= $08)
   ;   return 0
+  ld L, $00
   ld A, C
   and %1111000
-  jr Z, _
-    exx
-    ld C, $00
-    ld A, E
-    out ($05), A
-    ret
-_:
+  ret NZ
 
-  ; populate PCB
-  exx
+  ; init PCB
   ld (IX), H
-  exx
-  ld (IX+1), $EA
-  ld (IX+2), $FF
-  ld (IX+3), $C0
-  ld (IX+4), $00
+  ld (IX+$1), $08 ; these are here to be noticable
+  ld (IX+$2), $08
+  ld (IX+$3), $C0
+  ld (IX+$4), $00
+
+  ; init SP and PC
+  ld A, C
+  out ($05), A
+  ld HL, $FFE8
+  ld ($C000 + SP_AD), HL
+  ld HL, $4000
+  ld ($FFFC), HL
+  ld A, $00
+  out ($05), A
 
   ; go to end of ready queue
   ld HL, $BFFF
@@ -59,36 +55,31 @@ _:
   ; add new PID
   ld (HL), C
 
-  ; add new PC to user space
-  ld A, C
-  out ($05), A
-  ld HL, $4000
-  ld ($FFFE), HL
-
-  ; restore RAM page
-  exx
-  ld A, E
-  out ($05), A
   ; return new PID
   ld L, C
   ret
 
 ; Brief: kills a process
-; Input: L = PID
+; Input: C = PID
+; Note: Assumes kernel memory space
+; Note: Does not return, jumps to Idling
+; Note: Clears the stack, just in case
 KillProcess:
-  ; C = RAM page to return to
-  in A, ($05)
-  ld C, A
+  ; clear stack (just in case)
+  ld SP, ($C000 + SP_AD)
 
-  ; load kernel RAM page
-  ld A, $00
-  out ($05), A
+  ; if (C == 0 or C > 7)
+  ;   return
+  ld A, C
+  and %00000111
+  cp $00
+  jp Z, Idling
 
   ; DE = PCB_SIZE
   ld DE, PCB_SIZE
 
   ; IX = PCB address
-  ld B, L
+  ld B, C
   ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
 _:
   add IX, DE
@@ -103,39 +94,36 @@ _:
   ld (IX+$03), $00
   ld (IX+$04), $00
 
-  ; H = currently running PID
-  ; i.e. calling PID
-  ld A, ($C000)
-  ld H, A
-
   ; shift and search for PID from the end
-  ld IX, $C007
+  ld HL, $C007
   ld B, $00
 _:
-  dec IX
-  ld A, (IX)
-  ld (IX), B
+  dec HL
+  ld A, (HL)
+  ld (HL), B
   ld B, A
-  cp L
+  cp C
   jr NZ, -_
 
-  ; if (H == L)
-  ;   load next process as if normally scheduled context switch
-  ; else
-  ;   regular exit
-  ld A, L
-  cp H
+  ; If the killed process was in the left pane, clear it and return
+  ld A, ($C000 + PID_LEFT_PANE_AD)
+  cp C
   jr NZ, _
-  ; You might think that there would be an extra PC on the stack that is being
-  ; mangled, but fear not, the "call KillProcess" in "interrupt.asm" was on the
-  ; user stack, so it gets thrown out.
-  jp schedulerLoad
+  ld C, $00
+  ld HL, $C000 + PLACEHOLDER_PANE_AD
+  call UpdatePane
+  jp Idling
 _:
 
-  ; restore RAM page
-  ld A, C
-  out ($05), A
-  ret
+  ; If the killed process was in the right pane, clear it and return
+  ld A, ($C000 + PID_RIGHT_PANE_AD)
+  cp C
+  jr NZ, _
+  ld C, $06
+  ld HL, $C000 + PLACEHOLDER_PANE_AD
+  call UpdatePane
+_:
+  jp Idling
 
 ; Brief: returns the currently running PID
 ; Output: L = PID
@@ -145,7 +133,7 @@ GetPID:
   ; load kernel RAM page
   in A, ($05)
   ld E, A
-  ld A, $80
+  ld A, $00
   out ($05), A
 
   ; L = current PID

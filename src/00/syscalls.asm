@@ -16,6 +16,7 @@ SysCall:
   push BC
   push DE
   push HL
+  ld ($C000 + SP_AD), SP
 
   ld B, 0
   ld C, (IX)
@@ -34,10 +35,20 @@ sysCallShutdown:
   jp Shutdown
 
 sysCallSpawn:
+  in A, ($05)
+  ld B, A
+  ld A, $00
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  push BC
   ld H, (IX+1)
   push IX
   call SpawnProcess
   pop IX
+  pop BC
+  ld A, B
+  ld ($C000 + SP_AD), SP
+  out ($05), A
   ld D, (IX+2)
   ld E, (IX+3)
   ld IY, $0000
@@ -46,9 +57,11 @@ sysCallSpawn:
   jr endSysCall
 
 sysCallKill:
-  ld L, (IX+1)
-  call KillProcess
-  jr endSysCall
+  ld C, (IX+1)
+  ld A, $00
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  jp KillProcess
 
 ; UNTESTED
 sysCallGetPID:
@@ -75,6 +88,7 @@ sysCallDrawText:
   jr endSysCall
 
 endSysCall:
+  ld SP, ($C000 + SP_AD)
   pop HL
   pop DE
   pop BC
