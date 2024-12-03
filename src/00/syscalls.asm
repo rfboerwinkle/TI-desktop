@@ -30,6 +30,7 @@ sysCallTable:
   jr sysCallGetPID
   jr sysCallSetPaneBuffer
   jr sysCallDrawText
+  jr sysCallWaitInput
 
 sysCallShutdown:
   jp Shutdown
@@ -86,6 +87,14 @@ sysCallDrawText:
   add IY, BC
   call DrawText
   jr endSysCall
+
+sysCallWaitInput:
+  ld L, (IX+1)
+  ld H, (IX+2)
+  ld A, $00
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  jp WaitInput
 
 endSysCall:
   ld SP, ($C000 + SP_AD)

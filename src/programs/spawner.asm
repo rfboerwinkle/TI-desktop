@@ -15,9 +15,9 @@ loop:
   jp loop
 
 spawnFiller:
-  .db $02, $03, $C0, $00
+  .db $02, $03, $00, $C0
 spawnClearer:
-  .db $02, $04, $C0, $00
+  .db $02, $04, $00, $C0
 ; this really should dynamically get its own pid...
 killSelf:
   .db $04, $01

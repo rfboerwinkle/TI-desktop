@@ -29,8 +29,8 @@ _:
 
   ; init PCB
   ld (IX), H
-  ld (IX+$1), $08 ; these are here to be noticable
-  ld (IX+$2), $08
+  ld (IX+$1), $00
+  ld (IX+$2), $00
   ld (IX+$3), $C0
   ld (IX+$4), $00
 
@@ -88,11 +88,16 @@ _:
   ; clear the PCB
   ; This is dependent on PCB_SIZE
   ; (so you can search for that string)
+  ; if process was waiting for input, skip shifting the ready queue
+  ld A, $00
+  or (IX+$01)
+  or (IX+$02)
   ld (IX), $00
   ld (IX+$01), $00
   ld (IX+$02), $00
   ld (IX+$03), $00
   ld (IX+$04), $00
+  jr NZ, wasWaiting
 
   ; shift and search for PID from the end
   ld HL, $C007
@@ -105,6 +110,7 @@ _:
   cp C
   jr NZ, -_
 
+wasWaiting:
   ; If the killed process was in the left pane, clear it and return
   ld A, ($C000 + PID_LEFT_PANE_AD)
   cp C
@@ -172,3 +178,72 @@ _:
   out ($05), A
 
   ret
+
+; Brief: Removes calling process from ready queue, updates input address
+; Input: HL = input address
+; Note: Assumes kernel memory space
+; Note: Does not return, jumps to Idling
+; Note: Clears the stack, just in case
+WaitInput:
+  ; clear stack (just in case)
+  ld SP, ($C000 + SP_AD)
+
+  ; set input address
+  ; DE = buffer address
+  ld A, ($C000)
+  ld DE, PCB_SIZE
+  ld B, A
+  ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
+_:
+  add IX, DE
+  djnz -_
+  ld (IX+$01), L
+  ld (IX+$02), H
+  ld L, (IX+$03)
+  ld H, (IX+$04)
+
+  ld D, A
+
+  ; If it was in the left pane, flush
+  ld A, ($C000 + PID_LEFT_PANE_AD)
+  cp D
+  jr NZ, _
+  ld C, $00
+  ld A, D
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  call UpdatePane
+  ld A, $00
+  ld ($C000 + SP_AD), SP
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  jp ++_
+_:
+
+  ; If it was in the right pane, flush it
+  ld A, ($C000 + PID_RIGHT_PANE_AD)
+  cp D
+  jr NZ, _
+  ld C, $06
+  ld A, D
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+  call UpdatePane
+  ld A, $00
+  ld ($C000 + SP_AD), SP
+  out ($05), A
+  ld SP, ($C000 + SP_AD)
+_:
+
+  ; shift ready queue
+  ld HL, $C007
+  ld B, $00
+_:
+  dec HL
+  ld A, (HL)
+  ld (HL), B
+  ld B, A
+  cp D
+  jr NZ, -_
+
+  jp Idling

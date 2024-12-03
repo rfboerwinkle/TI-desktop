@@ -108,7 +108,7 @@ keyJmpArray:
 key_21:
   ld HL, $C000 + PANE_FLAG_AD
   res 4, (HL)
-  jp endNotText
+  ret
 key_22:
   ret
 key_23:
@@ -120,7 +120,7 @@ key_24:
 key_25:
   ld HL, $C000 + PANE_FLAG_AD
   set 4, (HL)
-  jp endNotText
+  ret
 
 ; start proc
 key_26:
@@ -233,7 +233,7 @@ _:
   and %11110000
   add A, B
   ld (HL), A
-  jr endNotText
+  ret
 
 ; alpha / numeric toggle
 key_2B:
@@ -241,10 +241,10 @@ key_2B:
   bit 5, (HL)
   jr Z, _
   res 5, (HL)
-  jr endNotText
+  ret
 _:
   set 5, (HL)
-  jr endNotText
+  ret
 key_2C:
   ret
 key_2D:
@@ -265,7 +265,7 @@ _:
   and %11110000
   add A, B
   ld (HL), A
-  jr endNotText
+  ret
 key_2F:
   ret
 
@@ -280,12 +280,67 @@ key_30:
   ld A, (HL)
   and %11110000
   ld (HL), A
-  jr endNotText
+  ret
 key_31:
-  ret
+  ; A = PID to send to
+  ld HL, $C000 + PANE_FLAG_AD
+  bit 4, (HL)
+  jr Z, _
+  ld A, ($C000 + PID_RIGHT_PANE_AD)
+  jr ++_
+_:
+  ld A, ($C000 + PID_LEFT_PANE_AD)
+_:
 
-endNotText:
-  ret
+  cp $00
+  ret Z
+
+  ; DE = input address
+  ; clear input address
+  ld DE, PCB_SIZE
+  ld B, A
+  ld IX, $C000 + PCB_TABLE_AD - PCB_SIZE
+_:
+  add IX, DE
+  djnz -_
+  ld E, (IX+$01)
+  ld D, (IX+$02)
+  ld (IX+$01), $00
+  ld (IX+$02), $00
+
+  ; C = PID
+  ; clobber A
+  ; return if input address is $0000 (dead process / not waiting)
+  ld C, A
+  ld A, $00
+  or E
+  or D
+  ret Z
+
+  ; Copy data over
+  ld A, C
+  push BC
+  out ($05), A
+  ld A, $80
+  out ($07), A
+  ld BC, $0C
+  ; Whooooo!!! I knew storing addresses in offsets would be handy :D
+  ld HL, $8000 + KERNEL_PANE_AD
+  ldir
+  out ($05), A
+  pop BC
+
+  ; add PID to end of ready queue
+  ld HL, $BFFF
+_:
+  inc HL
+  ld B, (HL)
+  inc B
+  djnz -_
+  ld (HL), C
+
+  jr key_30
+
 
 ; Brief: Gets the key being pressed
 ; Output: A = keycode

@@ -7,3 +7,4 @@ cd ../programs/
 ../../software/spasm-ng-master/spasm -A "$@" xkcd_twitter.asm
 ../../software/spasm-ng-master/spasm -A "$@" filler.asm
 ../../software/spasm-ng-master/spasm -A "$@" spawner.asm
+../../software/spasm-ng-master/spasm -A "$@" notepad.asm
