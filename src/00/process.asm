@@ -118,6 +118,8 @@ wasWaiting:
   ld C, $00
   ld HL, $C000 + PLACEHOLDER_PANE_AD
   call UpdatePane
+  ld A, $00
+  ld ($C000 + PID_LEFT_PANE_AD), A
   jp Idling
 _:
 
@@ -128,6 +130,8 @@ _:
   ld C, $06
   ld HL, $C000 + PLACEHOLDER_PANE_AD
   call UpdatePane
+  ld A, $00
+  ld ($C000 + PID_RIGHT_PANE_AD), A
 _:
   jp Idling
 
