@@ -14,6 +14,8 @@ To put the calculator into boot mode:
 
  - Run TilEm: `tilem2 --rom=custom-files/TI84PSE_v253_custom.rom --normal-speed --skin=custom-files/ti84p.skn`
 
+ - Select 'TI-84 Plus Silver Edition'
+
  - Right click on the calculator and select "Send File..."
 
  - select your 8XU
