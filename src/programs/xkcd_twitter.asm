@@ -1,6 +1,13 @@
 ; https://what-if.xkcd.com/34/
 
 .org $4000
+  ; Clear RAM
+  ld hl, $C000
+  ld (hl), 0
+  ld de, $C001
+  ld bc, $7FFF
+  ldir
+
   ld BC, $0162
   ld HL, $C000
   ld DE, $C001
@@ -8,6 +15,8 @@
   ld ($C000), A
   ldir
 
+  ld IX, args_wait_input
+  rst $08
   ld IX, args_set_buffer
   rst $08
   ld IX, $E000
@@ -142,6 +151,10 @@ tweet2:
 
 args_set_buffer:
   .db $08, $00, $C0
+
+; It's not going anywhere important, just somewhere...
+args_wait_input:
+  .db $0C, $00, $C2
 
 horse1:
   .db $9D, $91, $8E, $9B, $8E, $AC, $9C, $BF, $8A, $BF, $BF, $BF
