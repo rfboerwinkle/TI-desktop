@@ -10,17 +10,17 @@ HEIGHT = 59
 radix = "0123456789ABCDEF"
 
 def getByte(img, x, y):
-  start = y*WIDTH + x*8
-  b = img[start : start+8]
+  start = x*8*4
+  b = img[y][start : start+8*4 : 4]
   out = 0
-  out += (not bool(b[0])) << 7
-  out += (not bool(b[1])) << 6
-  out += (not bool(b[2])) << 5
-  out += (not bool(b[3])) << 4
-  out += (not bool(b[4])) << 3
-  out += (not bool(b[5])) << 2
-  out += (not bool(b[6])) << 1
-  out += (not bool(b[7])) << 0
+  out += (b[0] < 127) << 7
+  out += (b[1] < 127) << 6
+  out += (b[2] < 127) << 5
+  out += (b[3] < 127) << 4
+  out += (b[4] < 127) << 3
+  out += (b[5] < 127) << 2
+  out += (b[6] < 127) << 1
+  out += (b[7] < 127) << 0
   return out
 
 img = None
@@ -29,8 +29,8 @@ with open(folder.strip("/\\") + ".bin", "wb") as fout:
   fout.write(len(files).to_bytes(1))
   for filename in files:
     with open(os.path.join(folder, filename), 'rb') as fp:
-      img = (png.Reader(file=fp)).read_flat()
-      img = list(img[2])
+      img = (png.Reader(file=fp)).asRGBA8()
+      img = [list(row) for row in img[2]]
 
     for x in range(WIDTH//8):
       for y in range(HEIGHT):
